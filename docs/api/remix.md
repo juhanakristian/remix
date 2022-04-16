@@ -70,13 +70,16 @@ export default function App() {
         <Outlet />
 
         {/* Manages scroll position for client-side transitions */}
+        {/* If you use a nonce-based content security policy for scripts, you must provide the `nonce` prop. Otherwise, omit the nonce prop as shown here. */}
         <ScrollRestoration />
 
         {/* Script tags go here */}
+        {/* If you use a nonce-based content security policy for scripts, you must provide the `nonce` prop. Otherwise, omit the nonce prop as shown here. */}
         <Scripts />
 
         {/* Sets up automatic reload when you change code */}
         {/* and only does anything during development */}
+        {/* If you use a nonce-based content security policy for scripts, you must provide the `nonce` prop. Otherwise, omit the nonce prop as shown here. */}
         <LiveReload />
       </body>
     </html>
@@ -84,7 +87,9 @@ export default function App() {
 }
 ```
 
-You can pass extra props to `<Scripts />` like `<Scripts crossOrigin />` for hosting your static assets on a different server than your app, or `<Script nonce={nonce}/>` for certain content security policies.
+You can pass extra props to `<Scripts />` like `<Scripts crossOrigin />` for hosting your static assets on a different server than your app.
+
+The example above renders several `<script />` tags into the resulting HTML. While this usually just works, you might have configured a [content security policy for scripts](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src) that prevents these `<script />` tags from being executed. In particular, to support [content security policies with nonce-sources for scripts](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/Sources#sources), the `<Scripts />`, `<LiveReload />` and `<ScrollRestoration />` components support a `nonce` property, e.g.`<Script nonce={nonce}/>`. The provided nonce is subsequently passed to the `<script />` tag rendered into the HTML by these components, allowing the scripts to be executed in accordance with your CSP policy.
 
 Learn more about `meta` and `links` exports in the [conventions](/api/conventions) documentation.
 
@@ -1265,9 +1270,9 @@ function SomeComponent() {
 
 ```js
 [
-  { pathname, data, params, handle }, // root route
-  { pathname, data, params, handle }, // layout route
-  { pathname, data, params, handle }, // child route
+  { id, pathname, data, params, handle }, // root route
+  { id, pathname, data, params, handle }, // layout route
+  { id, pathname, data, params, handle }, // child route
   // etc.
 ];
 ```
@@ -1550,14 +1555,13 @@ These are fully featured utilities for handling fairly simple use cases. It's no
 **Example:**
 
 ```tsx
-const uploadHandler = unstable_createFileUploadHandler({
-  maxFileSize: 5_000_000,
-  file: ({ filename }) => filename,
-});
-
 export const action: ActionFunction = async ({
   request,
 }) => {
+  const uploadHandler = unstable_createFileUploadHandler({
+    maxFileSize: 5_000_000,
+    file: ({ filename }) => filename,
+  });
   const formData = await unstable_parseMultipartFormData(
     request,
     uploadHandler
@@ -1589,13 +1593,12 @@ The `filter` function accepts an `object` and returns a `boolean` (or a promise 
 **Example:**
 
 ```tsx
-const uploadHandler = unstable_createMemoryUploadHandler({
-  maxFileSize: 500_000,
-});
-
 export const action: ActionFunction = async ({
   request,
 }) => {
+  const uploadHandler = unstable_createMemoryUploadHandler({
+    maxFileSize: 500_000,
+  });
   const formData = await unstable_parseMultipartFormData(
     request,
     uploadHandler
@@ -1704,12 +1707,12 @@ Your job is to do whatever you need with the `stream` and return a value that's 
 
 We have the built-in `unstable_createFileUploadHandler` and `unstable_createMemoryUploadHandler` and we also expect more upload handler utilities to be developed in the future. If you have a form that needs to use different upload handlers, you can compose them together with a custom handler, here's a theoretical example:
 
-```tsx
+```tsx filename=file-upload-handler.server.tsx
 import type { UploadHandler } from "@remix-run/{runtime}";
 import { unstable_createFileUploadHandler } from "@remix-run/{runtime}";
 import { createCloudinaryUploadHandler } from "some-handy-remix-util";
 
-export const fileUploadHandler =
+export const standardFileUploadHandler =
   unstable_createFileUploadHandler({
     directory: "public/calendar-events",
   });
@@ -1719,9 +1722,9 @@ export const cloudinaryUploadHandler =
     folder: "/my-site/avatars",
   });
 
-export const multHandler: UploadHandler = (args) => {
+export const fileUploadHandler: UploadHandler = (args) => {
   if (args.name === "calendarEvent") {
-    return fileUploadHandler(args);
+    return standardFileUploadHandler(args);
   } else if (args.name === "eventBanner") {
     return cloudinaryUploadHandler(args);
   } else {
